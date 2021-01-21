@@ -122,9 +122,7 @@ import {
   checkoutBranch,
   createCommit,
   deleteBranch,
-  formatAsLocalRef,
   getAuthorIdentity,
-  getBranchAheadBehind,
   getChangedFiles,
   getCommitDiff,
   getMergeBase,
@@ -135,7 +133,6 @@ import {
   pull as pullRepo,
   push as pushRepo,
   renameBranch,
-  updateRef,
   saveGitIgnore,
   appendIgnoreRule,
   createMergeCommit,
@@ -151,6 +148,7 @@ import {
   GitError,
   MergeResult,
   getBranchesDifferingFromUpstream,
+  fastForwardBranches,
 } from '../git'
 import {
   installGlobalLFSFilters,
@@ -3786,30 +3784,7 @@ export class AppStore extends TypedBaseStore<IAppState> {
       allBranches
     )
 
-    for (const branch of eligibleBranches) {
-      const aheadBehind = await getBranchAheadBehind(repository, branch)
-      if (!aheadBehind) {
-        continue
-      }
-
-      const { ahead, behind } = aheadBehind
-      // Only perform the fast forward if the branch is behind it's upstream
-      // branch and has no local commits.
-      if (ahead === 0 && behind > 0) {
-        // At this point we're guaranteed this is non-null since we've filtered
-        // out any branches will null upstreams above when creating
-        // `eligibleBranches`.
-        const upstreamRef = branch.upstream!
-        const localRef = formatAsLocalRef(branch.name)
-        await updateRef(
-          repository,
-          localRef,
-          branch.tip.sha,
-          upstreamRef,
-          'pull: Fast-forward'
-        )
-      }
-    }
+    await fastForwardBranches(repository, eligibleBranches)
   }
 
   /** This shouldn't be called directly. See `Dispatcher`. */
